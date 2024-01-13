@@ -1,0 +1,3 @@
+1. Change the key signature of the stream to the latest one the user is learning, and confirm that the sheet music has basically been transposed this way because of that.
+
+2. That's it. The python file is already usable in a makeshift way since the user has already learned up to sixteenth notes at this point anyway. Return the sheet music image and the midi as base64 strings, just like we did in generatemelody.py
