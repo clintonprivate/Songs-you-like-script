@@ -8,6 +8,12 @@ d_major_scale = ["B3",
                  "C4", "C#4", "D4", "E4", "F#4", "G4", "A4", "B4",
                  "C5", "C#5", "D5", "E5", "F#5", "G5", "A5", "B5",]
 
+keySignatureDictionary = {
+    "| C major |": 0,
+    "| D major |": 2,
+    "| E major |": 4,
+}
+
 def pickRandomSong():
     files = [f for f in os.listdir(songsDirectory) if os.path.isfile(os.path.join(songsDirectory, f))]
     randomFile = random.choice(files)
@@ -38,16 +44,25 @@ def find_longest_matching_interval(maxInterval, score):
     longestMatchingPortion = max(allPortions, key=len)
     return longestMatchingPortion
 
+def transposeMelody(score):
+    for keyName in keySignatureDictionary:
+        if keyName in snippetCriteria:
+            score.parts[0].getElementsByClass('Measure')[0].keySignature = key.KeySignature(keySignatureDictionary[keyName])
+    return score
+
 def extractPlayableSnippet(inputFile):
     score = converter.parse(inputFile)
 
     # Remove bass clef if necessary for simplicity
-    if "| Treble and bass clef |" in snippetCriteria == False:
+    if ("| Treble and bass clef |" in snippetCriteria) == False:
         score = omitBassClef(score)
 
     # Find longest portion of the song with max intervals of 1
     print(find_longest_matching_interval(1, score))
     
-    score.write('musicxml', fp="output.xml", xml_declaration=True, omit_encoding=False)
+    # Transpose the melody to allow the user play the way they are learning
+    score = transposeMelody(score)
+
+    score.write('musicxml', fp="output.xml")
 
 extractPlayableSnippet("songsyoulike/Shining Star.mid")
