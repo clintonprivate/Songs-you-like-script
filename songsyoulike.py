@@ -1,7 +1,11 @@
+import io
 import os
 import random
+import base64
+from PIL import Image
 from music21 import *
 
+basedirectory = ""
 songsDirectory = os.path.join(os.getcwd(), "songsyoulike")
 snippetCriteria = "| D major | Treble clef | Single note | Intervals of 1 | Sixteenth note |"
 d_major_scale = ["B3",
@@ -47,22 +51,54 @@ def find_longest_matching_interval(maxInterval, score):
 def transposeMelody(score):
     for keyName in keySignatureDictionary:
         if keyName in snippetCriteria:
-            score.parts[0].getElementsByClass('Measure')[0].keySignature = key.KeySignature(keySignatureDictionary[keyName])
+            score.parts[0].keySignature = key.KeySignature(keySignatureDictionary[keyName])
     return score
 
-def extractPlayableSnippet(inputFile):
-    score = converter.parse(inputFile)
+def seperateSnippet(snippet):
+    new_score = stream.Score()
+    treble_part = stream.Part()
+    for note in snippet:
+        treble_part.append(note)
+    new_score.append(treble_part)
+    new_score = transposeMelody(new_score)
+    return new_score
 
+def extractPlayableSnippet(inputFile):
     # Remove bass clef if necessary for simplicity
+    score = converter.parse(inputFile)
     if ("| Treble and bass clef |" in snippetCriteria) == False:
         score = omitBassClef(score)
-
-    # Find longest portion of the song with max intervals of 1
-    print(find_longest_matching_interval(1, score))
     
-    # Transpose the melody to allow the user play the way they are learning
-    score = transposeMelody(score)
+    # Find longest portion of the song with max intervals of 1
+    snippet = find_longest_matching_interval(1, score)
 
-    score.write('musicxml', fp="output.xml")
+    # Extract the snippet from the whole melody
+    score = seperateSnippet(snippet)
+
+    # Create sheet musicc image and crop height to the single bar
+    bytes_data1 = score.write('musicxml.png', fp=(basedirectory + "output.png")).read_bytes()
+    bytes_data2 = score.write('midi', fp=(basedirectory + "output.mid"))
+    img_stream = io.BytesIO(bytes_data1)
+    img = Image.open(img_stream)
+    width, height = img.size
+    box = (300, 500, width - 150, 900)
+    img = img.crop(box)
+
+    # Return the image as a string
+    returnToJava = []
+    img_stream = io.BytesIO()
+    img.save(img_stream, format='PNG')
+    img_stream.seek(0)
+    base64_image = base64.b64encode(img_stream.read()).decode('utf-8')
+    returnToJava.append(base64_image)
+
+    # Return the MIDI as a string
+    with open(basedirectory + "output.mid", 'rb') as file:
+        midi_bytes = file.read()
+    base64_midi = base64.b64encode(midi_bytes).decode('utf-8')
+    returnToJava.append(base64_midi)
+
+    # Print returnToJava contents for Java
+    print(returnToJava)
 
 extractPlayableSnippet("songsyoulike/Shining Star.mid")
